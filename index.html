@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>จำลองเงาร่มสนาม</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1f2937; --mute:#565f6e; --line:#e5e7eb; --acc:#047857; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111418; --card:#1b1f26; --ink:#e5e7eb; --mute:#9ca3af; --line:#2d333d; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,"Noto Sans Thai",Tahoma,sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:minmax(0,1fr) 300px; }
+  @media (max-width:820px) { main { grid-template-columns:1fr; } }
+  h1 { font-size:20px; margin:0; grid-column:1/-1; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  canvas { width:100%; aspect-ratio:1; display:block; border-radius:8px; background:#fff; }
+  form { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:12px; }
+  label { display:grid; gap:2px; font-size:13px; color:var(--mute); }
+  input { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); }
+  input:disabled { opacity:.5; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  button { font:inherit; font-weight:600; padding:8px 14px; border:0; border-radius:6px; color:#fff; background:var(--acc); cursor:pointer; }
+  button.alt { background:#6d28d9; }
+  #err { color:#dc2626; font-size:13px; min-height:1.4em; margin-top:6px; }
+  dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; }
+  dt { color:var(--mute); } dd { margin:0; font-weight:600; text-align:right; font-variant-numeric:tabular-nums; }
+  hr { border:0; border-top:1px solid var(--line); margin:10px 0; }
+  footer { grid-column:1/-1; color:var(--mute); font-size:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>จำลองตำแหน่งเงาของร่มสนาม (ร่มราบแนวระดับ)</h1>
+
+  <section class="card">
+    <canvas id="cv"></canvas>
+    <div class="row">
+      <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="mode" value="static" checked> ดู ณ เวลาที่กำหนด</label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="mode" value="anim"> Animation ตลอดวัน (07:00–17:00)</label>
+    </div>
+    <form id="f">
+      <label>ละติจูด (°N)<input id="lat" type="number" step="any" min="-90" max="90" value="13.75" required></label>
+      <label>ลองจิจูด (°E)<input id="lon" type="number" step="any" min="-180" max="180" value="100.50" required></label>
+      <label>วันที่<input id="date" type="date" value="2026-05-01" required></label>
+      <label>เวลานาฬิกา<input id="time" type="time" value="09:00" required></label>
+      <label>รัศมีร่ม R (m)<input id="R" type="number" step="any" min="0.1" value="2" required></label>
+      <label>ความสูงร่ม h (m)<input id="h" type="number" step="any" min="0.1" value="5" required></label>
+    </form>
+    <div class="row">
+      <button id="go" type="button">▶ คำนวณและแสดงผล</button>
+      <button id="restart" type="button" class="alt" hidden>⏮ เริ่มใหม่</button>
+    </div>
+    <div id="err" role="alert"></div>
+  </section>
+
+  <aside class="card">
+    <dl id="out"></dl>
+  </aside>
+
+  <footer>ใช้สูตรดาราศาสตร์มาตรฐาน (เดคลิเนชัน, มุมชั่วโมง, สมการเวลา) อ้างอิงเส้นเมริเดียน 105°E · ค่าประมาณ ไม่รวมการหักเหของบรรยากาศ</footer>
+</main>
+
+<script src="calc.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+let timer = null, clock = 7, bound = null, finished = false;
+const mode = () => document.querySelector('input[name=mode]:checked').value;
+const hm = (h) => { let a = Math.floor(h), b = Math.round((h - a) * 60); if (b === 60) { a++; b = 0; } return String(a).padStart(2, "0") + ":" + String(b).padStart(2, "0"); };
+
+function readInputs() {
+  if (!$("f").checkValidity()) { $("f").reportValidity(); return null; }
+  const [y, m, d] = $("date").value.split("-").map(Number);
+  const [th, tm] = $("time").value.split(":").map(Number);
+  return { lat: +$("lat").value, lon: +$("lon").value, y, m, d, clock: th + tm / 60, R: +$("R").value, h: +$("h").value };
+}
+
+function dayBound(p) {
+  let mx = 6;
+  for (let t = 7; t <= 17; t++) {
+    const r = calculateShadow(p.lat, p.lon, p.y, p.m, p.d, t, p.R, p.h);
+    if (r.sunUp) mx = Math.max(mx, Math.abs(r.xc) + p.R + 3, Math.abs(r.yc) + p.R + 3);
+  }
+  return mx;
+}
+
+function render(p, r, fixed) {
+  const cssW = cv.clientWidth, dpr = window.devicePixelRatio || 1;
+  cv.width = cv.height = Math.round(cssW * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cssW;
+  const B = fixed ?? Math.max(6, r.sunUp ? Math.abs(r.xc) + p.R + 3 : 0, r.sunUp ? Math.abs(r.yc) + p.R + 3 : 0, p.R + 3);
+  const pad = 36, s = (W - 2 * pad) / (2 * B);
+  const X = (x) => W / 2 + x * s, Y = (y) => W / 2 - y * s;
+  ctx.clearRect(0, 0, W, W);
+  ctx.font = "12px system-ui, Tahoma, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+  const major = B <= 15 ? 2 : B <= 35 ? 5 : 10;
+  ctx.strokeStyle = "#d1d5db"; ctx.lineWidth = 1; ctx.fillStyle = "#6b7280";
+  for (let v = -Math.floor(B / major) * major; v <= B; v += major) {
+    ctx.beginPath(); ctx.moveTo(X(v), pad); ctx.lineTo(X(v), W - pad);
+    ctx.moveTo(pad, Y(v)); ctx.lineTo(W - pad, Y(v)); ctx.stroke();
+    if (v) { ctx.fillText(v, X(v), W - pad + 12); ctx.fillText(v, pad - 14, Y(v)); }
+  }
+  ctx.strokeStyle = "#111"; ctx.beginPath();
+  ctx.moveTo(X(0), pad); ctx.lineTo(X(0), W - pad); ctx.moveTo(pad, Y(0)); ctx.lineTo(W - pad, Y(0)); ctx.stroke();
+
+  const circle = (x, y, fill) => { ctx.beginPath(); ctx.arc(X(x), Y(y), p.R * s, 0, 7); ctx.fillStyle = fill; ctx.fill(); };
+  if (r.sunUp) {
+    circle(r.xc, r.yc, "rgba(107,114,128,.55)");
+    ctx.setLineDash([6, 4]); ctx.strokeStyle = "rgba(220,38,38,.75)";
+    ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(r.xc), Y(r.yc)); ctx.stroke(); ctx.setLineDash([]);
+  }
+  circle(0, 0, "rgba(0,191,255,.45)");
+  const dot = (x, y, c) => { ctx.beginPath(); ctx.arc(X(x), Y(y), 4, 0, 7); ctx.fillStyle = c; ctx.fill(); };
+  dot(0, 0, "#111");
+  if (r.sunUp) {
+    dot(r.xc, r.yc, "#dc2626");
+    ctx.fillStyle = "#1e3a8a"; ctx.font = "bold 12px system-ui, Tahoma, sans-serif";
+    const ty = Y(r.yc) - p.R * s - 12;
+    ctx.fillText(`(${r.xc.toFixed(2)}, ${r.yc.toFixed(2)}) m`, X(r.xc), Math.max(pad + 6, ty));
+  } else {
+    ctx.fillStyle = "#b45309"; ctx.font = "bold 14px system-ui, Tahoma, sans-serif";
+    ctx.fillText("ดวงอาทิตย์อยู่ใต้ขอบฟ้า (ไม่มีเงา)", W / 2, pad + 10);
+  }
+  ctx.fillStyle = "#111"; ctx.font = "bold 14px system-ui, sans-serif";
+  ctx.fillText("N", X(0), pad - 14); ctx.fillText("S", X(0), W - pad + 24);
+  ctx.fillText("E", W - pad + 18, Y(0)); ctx.fillText("W", pad - 24, Y(0));
+}
+
+function panel(r) {
+  const f = (v, u = "", n = 2) => v.toFixed(n) + u;
+  const rows = [
+    ["ลำดับวันในปี (n)", r.n + " วัน"], ["เวลาดวงอาทิตย์ (ST)", hm(r.st) + " น."],
+    ["เดคลิเนชัน (δ)", f(r.delta, "°")], ["มุมชั่วโมง (ω)", f(r.omega, "°")], ["มุมเงย (α)", f(r.alpha, "°")],
+    ["มุมทิศดวงอาทิตย์ (ψ_Sun)", f(r.psiSun, "°")], ["มุมทิศเงา (ψ_Shadow)", f(r.psiShadow, "°")],
+    ["ทิศของเงา", r.dirName], ["มุมตกกระทบ (θ)", f(r.theta, "°")], ["ระยะเงากึ่งกลาง (d)", f(r.d, " m")],
+    "-", ["พื้นที่ผืนร่ม (A)", f(r.aUmbrella, " m²")], ["พื้นที่เงา (A_s)", f(r.aShadow, " m²")],
+    "-", ["พิกัดฉาก (x, y)", `(${f(r.xc)}, ${f(r.yc)}) m`],
+  ];
+  $("out").innerHTML = rows.map((x) => x === "-" ? '<hr style="grid-column:1/-1;width:100%">' : `<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join("");
+}
+
+function draw(clockHours, fixed) {
+  const p = readInputs();
+  if (!p) return false;
+  const r = calculateShadow(p.lat, p.lon, p.y, p.m, p.d, clockHours ?? p.clock, p.R, p.h);
+  panel(r); render(p, r, fixed);
+  return true;
+}
+
+function stop() { clearInterval(timer); timer = null; }
+function setBtn() {
+  const anim = mode() === "anim";
+  $("time").disabled = anim;
+  $("go").style.background = anim ? (timer ? "#b91c1c" : "#b45309") : "";
+  $("go").textContent = !anim ? "▶ คำนวณและแสดงผล" : timer ? "⏹ หยุด Animation" : finished ? "🎬 เล่นอีกครั้ง" : clock > 7 ? "▶ เล่นต่อ" : "🎬 เริ่มเล่น Animation";
+  $("restart").hidden = !(anim && !timer && clock > 7);
+}
+
+function play(restart) {
+  const p = readInputs();
+  if (!p) return;
+  bound = dayBound(p);
+  if (restart || finished) { clock = 7; finished = false; }
+  const step = () => {
+    $("time").value = hm(clock);
+    draw(clock, bound);
+    if (clock >= 17) { stop(); finished = true; setBtn(); return; }
+    clock = Math.min(clock + 0.15, 17);
+  };
+  stop(); timer = setInterval(step, 25); step(); setBtn();
+}
+
+$("go").onclick = () => {
+  if (mode() === "static") { stop(); draw(); }
+  else if (timer) { stop(); setBtn(); }
+  else play(false);
+};
+$("restart").onclick = () => play(true);
+document.querySelectorAll("input[name=mode]").forEach((e) => (e.onchange = () => { stop(); clock = 7; finished = false; setBtn(); if (mode() === "static") draw(); }));
+$("f").addEventListener("input", () => { if (!timer && mode() === "static") draw(); });
+window.addEventListener("resize", () => { if (!timer) draw(mode() === "anim" ? clock : undefined, mode() === "anim" ? bound : undefined); });
+draw(); setBtn();
+</script>
+</body>
+</html>
