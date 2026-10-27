@@ -9,5 +9,9 @@ for (const c of ref) {
   }
   if (r.sunUp !== c.out.sunUp || r.dirName !== c.out.dirName) { bad++; console.log("MISMATCH flag/dir", c.in, r.dirName, c.out.dirName); }
 }
+// เขตเวลาอื่น: โตเกียว (UTC+9 → 135°E) เที่ยงนาฬิกาต้องใกล้เที่ยงสุริยะ (|E| < 17 นาที)
+const tk = calculateShadow(35.68, 135, 2026, 5, 1, 12, 2, 5, 135);
+if (Math.abs(tk.st - 12) > 0.3) { bad++; console.log("FAIL tz", tk.st); }
+
 console.log(bad ? `FAIL ${bad}` : `OK ${ref.length} cases`);
 process.exit(bad ? 1 : 0);

@@ -14,16 +14,16 @@ function dayOfYear(y, m, d) {
   return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 864e5) + 1;
 }
 
-function solarTime(clockHours, lon, n) {
+function solarTime(clockHours, lon, n, stdLon = 105) {
   const b = rad((360 * (n - 81)) / 364);
   const e = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
-  return { st: clockHours + (4 * (lon - 105) + e) / 60, e };
+  return { st: clockHours + (4 * (lon - stdLon) + e) / 60, e };
 }
 
-function calculateShadow(lat, lon, y, m, d, clockHours, R, h) {
+function calculateShadow(lat, lon, y, m, d, clockHours, R, h, stdLon = 105) {
   const n = dayOfYear(y, m, d);
   const aUmbrella = Math.PI * R * R;
-  const { st, e } = solarTime(clockHours, lon, n);
+  const { st, e } = solarTime(clockHours, lon, n, stdLon);
   const delta = rad(23.45 * Math.sin(rad((360 / 365) * (284 + n))));
   const omegaDeg = 15 * (st - 12);
   const phi = rad(lat);
