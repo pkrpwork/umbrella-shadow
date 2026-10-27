@@ -1,93 +1,316 @@
 <!doctype html>
-<html lang="th">
+<html lang="th" class="rz" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>จำลองเงาร่มสนาม</title>
+<title>เงาร่มสนาม</title>
+<meta name="description" content="จำลองตำแหน่งเงาของร่มราบแนวระดับตามดวงอาทิตย์ พร้อมลูกโลกแสดงจุดที่ดวงอาทิตย์อยู่เหนือศีรษะ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --ink:#1f2937; --mute:#565f6e; --line:#e5e7eb; --acc:#047857; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#111418; --card:#1b1f26; --ink:#e5e7eb; --mute:#9ca3af; --line:#2d333d; }
-  }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,"Noto Sans Thai",Tahoma,sans-serif; }
-  main { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:minmax(0,1fr) 300px; }
-  @media (max-width:820px) { main { grid-template-columns:1fr; } }
-  h1 { font-size:20px; margin:0; grid-column:1/-1; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
-  canvas { width:100%; aspect-ratio:1; display:block; border-radius:8px; background:#fff; }
-  form { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:12px; }
-  label { display:grid; gap:2px; font-size:13px; color:var(--mute); }
-  select { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); min-width:0; }
-  input { min-width:0; font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); }
-  input:disabled { opacity:.5; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
-  button { font:inherit; font-weight:600; padding:8px 14px; border:0; border-radius:6px; color:#fff; background:var(--acc); cursor:pointer; }
-  button.alt { background:#6d28d9; }
-  #err { color:#dc2626; font-size:13px; min-height:1.4em; margin-top:6px; }
-  dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; }
-  dt { color:var(--mute); } dd { margin:0; font-weight:600; text-align:right; font-variant-numeric:tabular-nums; }
-  hr { border:0; border-top:1px solid var(--line); margin:10px 0; }
-  footer { grid-column:1/-1; color:var(--mute); font-size:12px; }
+/* โทเคนและคอมโพเนนต์จากดีไซน์ใหม่ (Recursion) */
+:root, .rz {
+  --paper: #faf7f1; --paper-2: #f1ecdc; --line: #e4dfd1;
+  --ink: #20232d; --ink-soft: #63677a; --ink-faint: #9a9686; --ink-deep: #171a22;
+  --a50: #fbedf0; --a200: #efc4cf; --a500: #a81f49; --a700: #7a1636;
+  --gold: #f0a93e; --gold-100: #fdecc8;
+  --r-card: 1.5rem; --r-shell: 2rem;
+  --shadow-card: 0 24px 60px rgba(32, 35, 45, .12);
+  --shadow-sm: 0 8px 24px rgba(32, 35, 45, .07);
+  --sun: #f0a93e;
+  --ocean-hi: #8fd0f2; --ocean-lo: #2f84c9;
+  --land: #6cbc6a; --land-edge: #479650;
+  --grat: rgba(255, 255, 255, .28); --night: rgba(14, 22, 48, .50); --rim: rgba(14, 30, 70, .35);
+  --star-o: 0; --seg-night: #d6d0bc;
+  --stage: radial-gradient(90% 70% at 26% 62%, rgba(253, 236, 200, .95) 0%, rgba(241, 236, 220, 0) 72%), #f1ecdc;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2363677a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+.rz[data-theme="dark"] {
+  --paper: #252936; --paper-2: #2e3342; --line: #404658;
+  --ink: #eef0f6; --ink-soft: #b4bacb; --ink-faint: #8a91a6; --ink-deep: #1b1e28;
+  --a50: #3b2733; --a200: #7a3a52; --a500: #ee6f94; --a700: #f7afc4;
+  --shadow-card: 0 18px 44px rgba(10, 12, 20, .38), inset 0 1px 0 rgba(255, 255, 255, .06);
+  --shadow-sm: 0 8px 24px rgba(10, 12, 20, .30), inset 0 1px 0 rgba(255, 255, 255, .05);
+  --ocean-hi: #3b86c4; --ocean-lo: #123a66;
+  --land: #3f8f52; --land-edge: #5cae6c;
+  --grat: rgba(255, 255, 255, .16); --night: rgba(6, 10, 24, .62); --rim: rgba(4, 10, 28, .6);
+  --star-o: .75; --seg-night: #4c5368;
+  --stage: radial-gradient(90% 70% at 26% 62%, rgba(240, 169, 62, .14) 0%, rgba(46, 51, 66, 0) 72%), #1f2330;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b4bacb' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+.rz {
+  font-family: "Prompt", system-ui, sans-serif; font-size: 14.5px; line-height: 1.6;
+  color: var(--ink); background: var(--paper); font-variant-numeric: tabular-nums;
+  transition: background-color .2s, color .2s;
+}
+body { margin: 0; }
+.rz *, .rz *::before, .rz *::after { box-sizing: border-box; }
+.rz h1, .rz h2, .rz h3, .rz p, .rz dl, .rz dd, .rz dt { margin: 0; }
+.rz svg text { font-family: inherit; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-sm); padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; }
+.h { font-size: 16px; font-weight: 700; line-height: 1.4; }
+.cap { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > span { font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
+.in {
+  height: 44px; width: 100%; min-width: 0; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--paper-2); color: var(--ink); font: inherit; font-size: 14.5px; padding: 0 14px;
+  font-variant-numeric: tabular-nums; color-scheme: light;
+}
+.rz[data-theme="dark"] .in { color-scheme: dark; }
+.in:disabled { opacity: .5; cursor: not-allowed; }
+select.in { appearance: none; -webkit-appearance: none; padding-right: 38px; background-image: var(--chev); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer; }
+.rz :focus-visible { outline: 3px solid var(--a500); outline-offset: 2px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: transform .2s, background-color .2s, box-shadow .2s;
+}
+.btn:hover { transform: translateY(-2px); background: var(--paper-2); }
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn-primary { background: var(--a500); border-color: transparent; color: var(--paper); }
+.btn-primary:hover { background: var(--a700); }
+.btn-lg { height: 56px; padding: 0 28px; font-size: 16px; font-weight: 700; }
+.btn-sm { height: 40px; padding: 0 16px; font-size: 13.5px; }
+.btn-icon { width: 44px; padding: 0; }
+.btn-icon.btn-lg { width: 56px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--paper-2); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: transform .2s, background-color .2s;
+}
+.chip:hover { transform: translateY(-2px); background: var(--a50); }
+.chip svg { width: 18px; height: 18px; flex: none; }
+
+.seg { display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--paper-2); border: 1px solid var(--line); max-width: 100%; }
+.seg label { position: relative; cursor: pointer; display: flex; }
+.seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.seg span {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 16px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-soft); white-space: nowrap; transition: background-color .2s, color .2s;
+}
+.seg span svg { width: 18px; height: 18px; flex: none; }
+.seg input:checked + span { background: var(--paper); color: var(--a500); font-weight: 700; box-shadow: 0 0 0 1px var(--line), 0 2px 6px rgba(32, 35, 45, .12); }
+.seg input:focus-visible + span { outline: 3px solid var(--a500); outline-offset: 2px; }
+
+.tile { background: var(--paper-2); border-radius: 18px; padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.tile .k { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+.tile .v { font-size: 26px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+.tile .u { font-size: 14.5px; font-weight: 600; color: var(--ink-soft); margin-left: 4px; }
+.tile .s { font-size: 12.5px; font-weight: 500; color: var(--ink-soft); line-height: 1.3; }
+.tile-hot { background: var(--a50); }
+.tile-hot .v { color: var(--a500); }
+
+.rng { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 32px; margin: 0; background: transparent; cursor: pointer; }
+.rng:disabled { opacity: .5; cursor: not-allowed; }
+.rng::-webkit-slider-runnable-track { height: 10px; border-radius: 999px; background: var(--track, var(--seg-night)); }
+.rng::-moz-range-track { height: 10px; border-radius: 999px; background: var(--track, var(--seg-night)); }
+.rng::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -9px; border-radius: 50%; background: var(--sun); border: 4px solid var(--paper); box-shadow: 0 0 0 1px var(--ink-faint), 0 4px 12px rgba(32, 35, 45, .28); }
+.rng::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--sun); border: 4px solid var(--paper); box-shadow: 0 0 0 1px var(--ink-faint), 0 4px 12px rgba(32, 35, 45, .28); }
+.rng:focus-visible { outline: 3px solid var(--a500); outline-offset: 4px; border-radius: 999px; }
+
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.row dt { color: var(--ink-soft); font-size: 14px; }
+.row dd { font-weight: 700; text-align: right; }
+.sym { display: inline-block; min-width: 40px; margin-right: 6px; font-weight: 700; color: var(--a500); }
+.gh { font-size: 13.5px; font-weight: 700; color: var(--ink-soft); padding-bottom: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rz *, .rz *::before, .rz *::after { transition: none !important; animation: none !important; }
+}
+
+/* โครงหน้า */
+form#f { display: contents; }
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 12px 28px; min-height: 72px; }
+.top .brand { display: flex; align-items: center; gap: 12px; }
+.top .tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+main { flex: 1; display: flex; flex-wrap: wrap; gap: 20px; padding: 0 28px 24px; min-height: 0; }
+.globe { flex: 58 1 560px; min-width: 0; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--r-shell); border: 1px solid var(--line); background: var(--stage); box-shadow: var(--shadow-card); }
+.stage { width: min(100%, calc(100vh - 130px)); aspect-ratio: 1; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+.g-l { position: absolute; left: 32px; top: 28px; max-width: 360px; }
+.g-r { position: absolute; right: 32px; top: 28px; text-align: right; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
+.g-r b { font-size: 16px; color: var(--ink); }
+.legend { position: absolute; left: 24px; bottom: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 10px 20px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); font-size: 13.5px; font-weight: 600; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+aside.side { flex: 42 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.c-play { background: var(--a50); border-color: var(--a200); gap: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.flexrow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+#err { color: var(--a500); font-size: 13.5px; font-weight: 600; }
+
+/* drawer ข้อมูลเชิงลึก */
+#drawer { position: fixed; inset: 0; z-index: 20; }
+#drawer .back { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; cursor: default; background: rgba(23, 26, 34, .5); }
+#drawer aside { position: absolute; top: 16px; right: 16px; bottom: 16px; width: min(840px, calc(100% - 32px)); display: flex; flex-direction: column; overflow: hidden; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-shell); box-shadow: var(--shadow-card); }
+.d-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 28px 12px; }
+.d-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 24px 32px; padding: 8px 28px 28px; }
+details.adv { border: 1px solid var(--line); border-radius: 18px; padding: 12px 16px; background: var(--paper-2); }
+details.adv summary { cursor: pointer; font-weight: 700; font-size: 14.5px; min-height: 28px; }
+
+@media (max-width: 1060px) {
+  .top { padding: 12px 16px; }
+  main { flex-direction: column; flex-wrap: nowrap; gap: 12px; padding: 0 16px 24px; }
+  aside.side { display: contents; }
+  .globe { order: 0; flex: none; flex-direction: column; align-items: stretch; padding: 16px 16px 12px; }
+  .c-play { order: 1; } .c-out { order: 2; } .c-loc { order: 3; } .c-time { order: 4; }
+  .stage { width: 100%; }
+  .g-l, .g-r, .legend { position: static; max-width: none; text-align: left; }
+  .g-r { margin-top: 4px; }
+  .legend { margin-top: 4px; border-radius: 20px; }
+  .card { padding: 16px; }
+}
+@media (max-width: 560px) {
+  .top .lbl { display: none; }
+  .seg { flex-wrap: wrap; border-radius: 22px; }
+  .seg span { padding: 0 12px; white-space: normal; text-align: center; height: auto; min-height: 40px; }
+  .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .c-out .res { flex-direction: column; }
+}
+@media (max-width: 700px) {
+  #drawer aside { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 88vh; border-radius: var(--r-shell) var(--r-shell) 0 0; }
+  .d-head, .d-body { padding-left: 20px; padding-right: 20px; }
+}
 </style>
 </head>
 <body>
+<noscript>ต้องเปิด JavaScript เพื่อใช้งานเว็บนี้</noscript>
+<div class="app">
+<form id="f" onsubmit="return false" autocomplete="off">
+
+<header class="top">
+  <div class="brand">
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" rx="13" style="fill: var(--a50)"/><path d="M8 21a12 12 0 0124 0z" stroke-width="2.5" stroke-linejoin="round" style="stroke: var(--a500)"/><path d="M20 21v7.5a2.5 2.5 0 005 0" stroke-width="2.5" stroke-linecap="round" style="stroke: var(--a500)"/></svg>
+    <div>
+      <h1 style="font-size:18px;font-weight:700;line-height:1.3">เงาร่มสนาม</h1>
+      <p class="cap" style="font-weight:500">จำลองตำแหน่งเงาของร่มราบแนวระดับตามดวงอาทิตย์</p>
+    </div>
+  </div>
+  <div class="tools">
+    <button id="link" type="button" class="btn btn-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg><span class="lbl">คัดลอกลิงก์</span></button>
+    <div class="seg" role="radiogroup" aria-label="ธีมสี">
+      <label><input type="radio" name="theme" value="auto" checked><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18z" fill="currentColor"/></svg><span class="lbl" style="padding:0;height:auto">อัตโนมัติ</span></span></label>
+      <label><input type="radio" name="theme" value="light"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span class="lbl" style="padding:0;height:auto">สว่าง</span></span></label>
+      <label><input type="radio" name="theme" value="dark"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></svg><span class="lbl" style="padding:0;height:auto">มืด</span></span></label>
+    </div>
+  </div>
+</header>
+
 <main>
-  <h1>จำลองตำแหน่งเงาของร่มสนาม (ร่มราบแนวระดับ)</h1>
-
-  <section class="card">
-    <canvas id="cv"></canvas>
-    <div class="row">
-      <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="mode" value="static" checked> ดู ณ เวลาที่กำหนด</label>
-      <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="mode" value="anim"> Animation ตลอดวัน (07:00–17:00)</label>
+  <section class="globe" aria-label="ลูกโลก">
+    <div class="g-l">
+      <h2 style="font-size:18px;font-weight:700;line-height:1.35">ดวงอาทิตย์อยู่เหนือจุดไหนของโลก</h2>
+      <p style="font-size:13.5px;font-weight:500;color:var(--ink-soft)">มองจากเหนือตำแหน่งของคุณ ด้านกลางคืนเงาลงเป็นสีเข้ม</p>
     </div>
-    <form id="f">
-      <label>ประเทศ (เมืองหลวง)<select id="country"></select></label>
-      <label>เขตเวลา (UTC+)<input id="tz" type="number" step="0.25" min="-12" max="14" value="7" required></label>
-      <label>ละติจูด (°N)<input id="lat" type="number" step="any" min="-90" max="90" value="13.75" required></label>
-      <label>ลองจิจูด (°E)<input id="lon" type="number" step="any" min="-180" max="180" value="100.50" required></label>
-      <label>วันที่<input id="date" type="date" value="2026-05-01" required></label>
-      <label>เวลานาฬิกา<input id="time" type="time" value="09:00" required></label>
-      <label style="grid-column:1/-1">เลื่อนเวลา<input id="tr" type="range" min="0" max="1439" step="5" value="540"></label>
-      <label>รัศมีร่ม R (m)<input id="R" type="number" step="any" min="0.1" value="2" required></label>
-      <label>ความสูงร่ม h (m)<input id="h" type="number" step="any" min="0.1" value="5" required></label>
-    </form>
-    <div class="row">
-      <button id="go" type="button">▶ คำนวณและแสดงผล</button>
-      <button id="restart" type="button" class="alt" hidden>⏮ เริ่มใหม่</button>
-      <label style="display:flex;gap:6px;align-items:center">ความเร็ว
-        <select id="spd"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+    <p id="gi" class="g-r"></p>
+    <div class="stage"><canvas id="gl" role="img" aria-label="ลูกโลกมองจากเหนือตำแหน่งของคุณ แสดงด้านกลางวันและกลางคืน ตำแหน่งของผู้ใช้ และจุดที่ดวงอาทิตย์อยู่เหนือศีรษะ"></canvas></div>
+    <div class="legend">
+      <span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke-width="2.5" style="fill:var(--a500);stroke:var(--paper)"/></svg>คุณอยู่ที่นี่</span>
+      <span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" style="fill:var(--sun)"/></svg>จุดใต้ดวงอาทิตย์</span>
+      <span><svg width="28" height="16" viewBox="0 0 28 16" aria-hidden="true"><line x1="3" y1="8" x2="25" y2="8" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 8" style="stroke:var(--sun)"/></svg>เส้นทางของวันนี้</span>
+      <span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="4" stroke-width="1.5" style="fill:var(--ink-deep);fill-opacity:.55;stroke:var(--line)"/></svg>กลางคืน</span>
     </div>
-    <div class="row">
-      <button id="here" type="button" class="alt">📍 ตำแหน่งของฉัน</button>
-      <button id="now" type="button" class="alt">🕒 ตอนนี้ที่นี่</button>
-      <button id="link" type="button" class="alt">🔗 คัดลอกลิงก์</button>
-    </div>
-    <div class="row" id="chips">
-      <span style="color:var(--mute);font-size:13px">วันสำคัญ:</span>
-      <button type="button" class="alt" data-md="3-20">วิษุวัตเดือนมี.ค.</button>
-      <button type="button" class="alt" data-md="6-21">ครีษมายัน</button>
-      <button type="button" class="alt" data-md="9-23">วิษุวัตเดือนก.ย.</button>
-      <button type="button" class="alt" data-md="12-21">เหมายัน</button>
-    </div>
-    <div id="err" role="alert"></div>
   </section>
 
-  <aside class="card">
-    <dl id="out"></dl>
+  <aside class="side" aria-label="การตั้งค่าและผลลัพธ์">
+    <section class="card c-loc" aria-labelledby="h-loc">
+      <h2 class="h" id="h-loc">สถานที่</h2>
+      <div style="display:flex;align-items:flex-end;gap:12px">
+        <label class="field" style="flex:1"><span>ประเทศ (เมืองหลวง)</span><select id="country" class="in"></select></label>
+        <button id="here" type="button" class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="lbl2">ตำแหน่งของฉัน</span></button>
+      </div>
+      <div class="grid3">
+        <label class="field"><span>ละติจูด (°N)</span><input id="lat" class="in" type="number" step="any" min="-90" max="90" value="13.75" required></label>
+        <label class="field"><span>ลองจิจูด (°E)</span><input id="lon" class="in" type="number" step="any" min="-180" max="180" value="100.50" required></label>
+        <label class="field"><span>เขตเวลา (UTC+)</span><input id="tz" class="in" type="number" step="0.25" min="-12" max="14" value="7" required></label>
+      </div>
+    </section>
+
+    <section class="card c-time" aria-labelledby="h-time">
+      <h2 class="h" id="h-time">วันและเวลา</h2>
+      <div class="grid2">
+        <label class="field"><span>วันที่</span><input id="date" class="in" type="date" value="2026-10-27" required></label>
+        <label class="field"><span>เวลานาฬิกา</span><input id="time" class="in" type="time" value="14:30" required></label>
+      </div>
+      <div>
+        <label class="field"><span class="sr">เลื่อนเวลา</span><input id="tr" class="rng" type="range" min="0" max="1439" step="5" value="870"></label>
+        <div class="cap" style="display:flex;justify-content:space-between;padding:0 2px"><span>00:00</span><span id="sunt"></span><span>24:00</span></div>
+      </div>
+      <div id="chips" style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" class="chip" data-md="3-20">วิษุวัต มี.ค.</button>
+        <button type="button" class="chip" data-md="6-21">ครีษมายัน</button>
+        <button type="button" class="chip" data-md="9-23">วิษุวัต ก.ย.</button>
+        <button type="button" class="chip" data-md="12-21">เหมายัน</button>
+        <button id="now" type="button" class="chip" style="margin-left:auto;color:var(--a500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>ตอนนี้ที่นี่</button>
+      </div>
+    </section>
+
+    <section class="card c-play" aria-label="ควบคุมการเล่น">
+      <div class="seg" role="radiogroup" aria-label="โหมดแสดงผล" style="align-self:flex-start">
+        <label><input type="radio" name="mode" value="static" checked><span>ดู ณ เวลาที่กำหนด</span></label>
+        <label><input type="radio" name="mode" value="anim"><span>Animation ตลอดวัน (07:00–17:00)</span></label>
+      </div>
+      <div class="flexrow">
+        <button id="go" type="button" class="btn btn-primary btn-lg" style="flex:1 1 200px"></button>
+        <button id="restart" type="button" class="btn btn-lg btn-icon" aria-label="เริ่มใหม่"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+        <label class="field" style="flex-direction:row;align-items:center;gap:10px"><span>ความเร็ว</span>
+          <select id="spd" class="in" style="width:96px;height:56px"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+      </div>
+    </section>
+
+    <section class="card c-out" aria-labelledby="h-out">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <h2 class="h" id="h-out">ผลลัพธ์</h2>
+        <button id="open-insight" type="button" class="btn btn-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>ดูข้อมูลเชิงลึก</button>
+      </div>
+      <p id="err" role="alert" hidden></p>
+      <div class="res" style="display:flex;align-items:stretch;gap:16px">
+        <div id="out" style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px"></div>
+        <div id="cv" style="width:196px;flex:none;align-self:center"></div>
+      </div>
+    </section>
   </aside>
-
-  <section class="card" style="grid-column:1/-1">
-    <h2 style="font-size:16px;margin:0 0 8px">ลูกโลก: ดวงอาทิตย์อยู่ตรงไหนของโลก</h2>
-    <canvas id="gl" style="max-width:520px;margin:0 auto"></canvas>
-    <p id="gi" style="text-align:center;margin:8px 0 0"></p>
-    <p style="text-align:center;color:var(--mute);font-size:12px;margin:4px 0 0">
-      ☀ = จุดที่ดวงอาทิตย์อยู่เหนือศีรษะพอดี · ● แดง = ตำแหน่งของคุณ (กึ่งกลางภาพ) · ส่วนมืด = กลางคืน · เส้นเหลือง = เส้นทางของ ☀ ตลอด 24 ชม. ของวันนั้น
-    </p>
-  </section>
-
-  <footer>ใช้สูตรดาราศาสตร์มาตรฐาน (เดคลิเนชัน, มุมชั่วโมง, สมการเวลา) เวลานาฬิกาอ้างอิงเขตเวลาที่เลือก (UTC+) · ค่าประมาณ ไม่รวมการหักเหของบรรยากาศ</footer>
 </main>
+
+<div id="drawer" hidden>
+  <button type="button" class="back" tabindex="-1" aria-label="ปิดข้อมูลเชิงลึก"></button>
+  <aside role="dialog" aria-modal="true" aria-labelledby="h-ins">
+    <div class="d-head">
+      <div>
+        <h2 id="h-ins" style="font-size:26px;font-weight:700;line-height:1.25">ข้อมูลเชิงลึก</h2>
+        <p id="ins-sub" class="cap" style="font-weight:500"></p>
+      </div>
+      <button id="close-ins" type="button" class="btn btn-icon" aria-label="ปิด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="d-body">
+      <div id="ins-rows" style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:20px"></div>
+      <div style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px">
+        <div id="cv2" style="width:100%;max-width:380px;align-self:center"></div>
+        <p class="cap" style="font-weight:500;text-align:center">มองจากด้านบน · เหนืออยู่บน · วงขาว = ร่ม · วงทึบ = เงา</p>
+        <details class="adv" open>
+          <summary>ตั้งค่าร่ม (ขั้นสูง)</summary>
+          <div class="grid2" style="padding-top:10px">
+            <label class="field"><span>รัศมีร่ม R (m)</span><input id="R" class="in" type="number" step="any" min="0.1" value="2" required style="background:var(--paper)"></label>
+            <label class="field"><span>ความสูงร่ม h (m)</span><input id="h" class="in" type="number" step="any" min="0.1" value="5" required style="background:var(--paper)"></label>
+          </div>
+        </details>
+      </div>
+    </div>
+  </aside>
+</div>
+
+</form>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js"></script>
@@ -95,89 +318,126 @@
 <script src="calc.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
-const cv = $("cv"), ctx = cv.getContext("2d");
-let timer = null, clock = 7, bound = null, finished = false;
-const mode = () => document.querySelector('input[name=mode]:checked').value;
-const hm = (h) => { let a = Math.floor(h), b = Math.round((h - a) * 60); if (b === 60) { a++; b = 0; } return String(a).padStart(2, "0") + ":" + String(b).padStart(2, "0"); };
+const pad = (n) => String(n).padStart(2, "0");
+const hm = (h) => { let a = Math.floor(h), b = Math.round((h - a) * 60); if (b === 60) { a++; b = 0; } return pad(a) + ":" + pad(b); };
+const mins = (t) => { const [a, b] = t.split(":").map(Number); return a * 60 + b; };
+const mode = () => document.querySelector("input[name=mode]:checked").value;
+const wrap = (x) => ((((x + 180) % 360) + 360) % 360) - 180;
+const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let timer = null, clock = 7, bound = null, finished = false, last = null;
 
+/* ---------- ธีม สว่าง/มืด/อัตโนมัติ ---------- */
+const mq = matchMedia("(prefers-color-scheme: dark)");
+function applyTheme(pref) {
+  document.documentElement.dataset.theme = pref === "dark" || (pref === "auto" && mq.matches) ? "dark" : "light";
+  redraw();
+}
+let themePref = "auto";
+try { themePref = localStorage.getItem("theme") || "auto"; } catch {}
+document.querySelector(`input[name=theme][value=${themePref}]`).checked = true;
+document.querySelectorAll("input[name=theme]").forEach((e) => (e.onchange = () => {
+  themePref = e.value; try { localStorage.setItem("theme", themePref); } catch {}
+  applyTheme(themePref);
+}));
+mq.addEventListener("change", () => themePref === "auto" && applyTheme("auto"));
+
+/* ---------- อินพุต ---------- */
 function readInputs() {
-  if (!$("f").checkValidity()) { $("f").reportValidity(); return null; }
+  const f = $("f");
+  if (!f.checkValidity()) { f.reportValidity(); return null; }
   const [y, m, d] = $("date").value.split("-").map(Number);
   const [th, tm] = $("time").value.split(":").map(Number);
   return { lat: +$("lat").value, lon: +$("lon").value, y, m, d, clock: th + tm / 60, R: +$("R").value, h: +$("h").value,
     tz: +$("tz").value, std: +$("tz").value * 15 };
 }
+const calc = (p, t) => calculateShadow(p.lat, p.lon, p.y, p.m, p.d, t, p.R, p.h, p.std);
 
 function dayBound(p) {
   let mx = 6;
   for (let t = 7; t <= 17; t++) {
-    const r = calculateShadow(p.lat, p.lon, p.y, p.m, p.d, t, p.R, p.h, p.std);
+    const r = calc(p, t);
     if (r.sunUp) mx = Math.max(mx, Math.abs(r.xc) + p.R + 3, Math.abs(r.yc) + p.R + 3);
   }
   return mx;
 }
 
-function render(p, r, fixed) {
-  const cssW = cv.clientWidth, dpr = window.devicePixelRatio || 1;
-  cv.width = cv.height = Math.round(cssW * dpr);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const W = cssW;
-  const B = fixed ?? Math.max(6, r.sunUp ? Math.abs(r.xc) + p.R + 3 : 0, r.sunUp ? Math.abs(r.yc) + p.R + 3 : 0, p.R + 3);
-  const pad = 36, s = (W - 2 * pad) / (2 * B);
-  const X = (x) => W / 2 + x * s, Y = (y) => W / 2 - y * s;
-  ctx.clearRect(0, 0, W, W);
-  ctx.font = "12px system-ui, Tahoma, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+// เวลาแสงขึ้น/ตก (เวลานาฬิกา) ใช้ระบายแถบเลื่อนเวลา
+function sunTimes(p) {
+  const r = calc(p, 12);
+  const x = -Math.tan(rad(p.lat)) * Math.tan(rad(r.delta));
+  if (x >= 1) return { none: true };
+  if (x <= -1) return { all: true };
+  const w0 = deg(Math.acos(x)) / 15, off = (4 * (p.lon - p.std) + r.e) / 60;
+  const c = (v) => Math.max(0, Math.min(24, v));
+  return { up: c(12 - w0 - off), down: c(12 + w0 - off) };
+}
+function sunTrack(p) {
+  const s = sunTimes(p), N = "var(--seg-night)", S = "var(--sun)";
+  if (s.none) { $("tr").style.setProperty("--track", N); $("sunt").textContent = "ไม่มีดวงอาทิตย์ขึ้นวันนี้"; return; }
+  if (s.all) { $("tr").style.setProperty("--track", S); $("sunt").textContent = "ดวงอาทิตย์ไม่ตกวันนี้"; return; }
+  const a = (s.up / 24 * 100).toFixed(1), b = (s.down / 24 * 100).toFixed(1);
+  $("tr").style.setProperty("--track", `linear-gradient(90deg, ${N} 0 ${a}%, ${S} ${a}% ${b}%, ${N} ${b}% 100%)`);
+  $("sunt").textContent = `ขึ้น ${hm(s.up)} · ตก ${hm(s.down)} น.`;
+}
 
-  const major = B <= 15 ? 2 : B <= 35 ? 5 : 10;
-  ctx.strokeStyle = "#d1d5db"; ctx.lineWidth = 1; ctx.fillStyle = "#6b7280";
-  for (let v = -Math.floor(B / major) * major; v <= B; v += major) {
-    ctx.beginPath(); ctx.moveTo(X(v), pad); ctx.lineTo(X(v), W - pad);
-    ctx.moveTo(pad, Y(v)); ctx.lineTo(W - pad, Y(v)); ctx.stroke();
-    if (v) { ctx.fillText(v, X(v), W - pad + 12); ctx.fillText(v, pad - 14, Y(v)); }
-  }
-  ctx.strokeStyle = "#111"; ctx.beginPath();
-  ctx.moveTo(X(0), pad); ctx.lineTo(X(0), W - pad); ctx.moveTo(pad, Y(0)); ctx.lineTo(W - pad, Y(0)); ctx.stroke();
-
-  const circle = (x, y, fill) => { ctx.beginPath(); ctx.arc(X(x), Y(y), p.R * s, 0, 7); ctx.fillStyle = fill; ctx.fill(); };
+/* ---------- กราฟเงา 2D (SVG) ---------- */
+function diagram(p, r, B, big) {
+  const S = 176 / B, c = 200, Rp = p.R * S;
+  const lab = Rp >= 34 ? 24 : Rp >= 20 ? 16 : 0;
+  let s = `<svg viewBox="0 0 400 400" style="display:block;width:100%;height:auto" role="img" aria-label="กราฟเงามองจากด้านบน ทิศเหนืออยู่ด้านบน ${r.sunUp ? `เงาอยู่ทาง${r.dirName} ห่าง ${r.d.toFixed(2)} เมตร` : "ไม่มีเงาเพราะดวงอาทิตย์อยู่ใต้ขอบฟ้า"}">
+<circle cx="200" cy="200" r="192" stroke-width="2" style="fill:var(--paper-2);stroke:var(--line)"/>
+<circle cx="200" cy="200" r="88" fill="none" stroke-width="1.5" stroke-dasharray="4 7" stroke-opacity=".6" style="stroke:var(--ink-faint)"/>
+<circle cx="200" cy="200" r="176" fill="none" stroke-width="1.5" stroke-dasharray="4 7" stroke-opacity=".6" style="stroke:var(--ink-faint)"/>
+<line x1="200" y1="40" x2="200" y2="360" stroke-width="1.5" stroke-opacity=".5" style="stroke:var(--ink-faint)"/>
+<line x1="40" y1="200" x2="360" y2="200" stroke-width="1.5" stroke-opacity=".5" style="stroke:var(--ink-faint)"/>
+${[["N", 200, 36], ["E", 371, 209], ["S", 200, 381], ["W", 29, 209]].map(([t, x, y]) => `<text x="${x}" y="${y}" text-anchor="middle" font-size="26" font-weight="700" style="fill:var(--ink-soft)">${t}</text>`).join("")}`;
   if (r.sunUp) {
-    circle(r.xc, r.yc, "rgba(107,114,128,.55)");
-    ctx.setLineDash([6, 4]); ctx.strokeStyle = "rgba(220,38,38,.75)";
-    ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(r.xc), Y(r.yc)); ctx.stroke(); ctx.setLineDash([]);
-  }
-  circle(0, 0, "rgba(0,191,255,.45)");
-  const dot = (x, y, c) => { ctx.beginPath(); ctx.arc(X(x), Y(y), 4, 0, 7); ctx.fillStyle = c; ctx.fill(); };
-  dot(0, 0, "#111");
-  if (r.sunUp) {
-    dot(r.xc, r.yc, "#dc2626");
-    ctx.fillStyle = "#1e3a8a"; ctx.font = "bold 12px system-ui, Tahoma, sans-serif";
-    const ty = Y(r.yc) - p.R * s - 12;
-    ctx.fillText(`(${r.xc.toFixed(2)}, ${r.yc.toFixed(2)}) m`, X(r.xc), Math.max(pad + 6, ty));
+    const az = rad(r.psiSun), ux = Math.sin(az), uy = -Math.cos(az);
+    const sx = c + 140 * ux, sy = c + 140 * uy;
+    const sh = [c + r.xc * S, c - r.yc * S];
+    s += `<line x1="${c + (Rp + 8) * ux}" y1="${c + (Rp + 8) * uy}" x2="${sx - 32 * ux}" y2="${sy - 32 * uy}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 10" style="stroke:var(--sun)"/>
+<g transform="translate(${sx} ${sy})"><g stroke-width="3" stroke-linecap="round" style="stroke:var(--sun)">${[0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<line y1="-21" y2="-29" transform="rotate(${a})"/>`).join("")}</g><circle r="14" stroke-width="3" style="fill:var(--sun);stroke:var(--paper-2)"/></g>
+<circle cx="${sh[0]}" cy="${sh[1]}" r="${Rp}" stroke-width="3" stroke-dasharray="7 6" style="fill:var(--ink);fill-opacity:.28;stroke:var(--ink)"/>
+${lab ? `<text x="${sh[0]}" y="${sh[1] + lab / 3}" text-anchor="middle" font-size="${lab}" font-weight="700" style="fill:var(--ink)">เงา</text>` : ""}
+<line x1="200" y1="200" x2="${sh[0]}" y2="${sh[1]}" stroke-width="3" stroke-dasharray="6 6" style="stroke:var(--ink)"/>
+<text x="${(200 + sh[0]) / 2 - 10 * Math.sign(uy || 1)}" y="${(200 + sh[1]) / 2 - 8}" text-anchor="middle" font-size="22" font-weight="700" style="fill:var(--ink)">d</text>`;
   } else {
-    ctx.fillStyle = "#b45309"; ctx.font = "bold 14px system-ui, Tahoma, sans-serif";
-    ctx.fillText("ดวงอาทิตย์อยู่ใต้ขอบฟ้า (ไม่มีเงา)", W / 2, pad + 10);
+    s += `<text x="200" y="300" text-anchor="middle" font-size="22" font-weight="600" style="fill:var(--ink-soft)">ดวงอาทิตย์อยู่ใต้ขอบฟ้า</text>`;
   }
-  ctx.fillStyle = "#111"; ctx.font = "bold 14px system-ui, sans-serif";
-  ctx.fillText("N", X(0), pad - 14); ctx.fillText("S", X(0), W - pad + 24);
-  ctx.fillText("E", W - pad + 18, Y(0)); ctx.fillText("W", pad - 24, Y(0));
+  return s + `<circle cx="200" cy="200" r="${Rp}" stroke-width="4" style="fill:var(--paper);stroke:var(--a500)"/>
+${lab ? `<text x="200" y="${200 + lab / 3}" text-anchor="middle" font-size="${lab}" font-weight="700" style="fill:var(--a500)">ร่ม</text>` : ""}</svg>`;
 }
 
-function panel(r) {
-  const f = (v, u = "", n = 2) => v.toFixed(n) + u;
-  const rows = [
-    ["ลำดับวันในปี (n)", r.n + " วัน"], ["เวลาดวงอาทิตย์ (ST)", hm(r.st) + " น."],
-    ["เดคลิเนชัน (δ)", f(r.delta, "°")], ["มุมชั่วโมง (ω)", f(r.omega, "°")], ["มุมเงย (α)", f(r.alpha, "°")],
-    ["มุมทิศดวงอาทิตย์ (ψ_Sun)", f(r.psiSun, "°")], ["มุมทิศเงา (ψ_Shadow)", f(r.psiShadow, "°")],
-    ["ทิศของเงา", r.dirName], ["มุมตกกระทบ (θ)", f(r.theta, "°")], ["ระยะเงากึ่งกลาง (d)", f(r.d, " m")],
-    "-", ["พื้นที่ผืนร่ม (A)", f(r.aUmbrella, " m²")], ["พื้นที่เงา (A_s)", f(r.aShadow, " m²")],
-    "-", ["พิกัดฉาก (x, y)", `(${f(r.xc)}, ${f(r.yc)}) m`],
-  ];
-  $("out").innerHTML = rows.map((x) => x === "-" ? '<hr style="grid-column:1/-1;width:100%">' : `<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join("");
+/* ---------- แผงผลลัพธ์ + ข้อมูลเชิงลึก ---------- */
+const f2 = (v, n = 2) => v.toFixed(n);
+const sg = (v) => (v < 0 ? "−" : "") + Math.abs(v).toFixed(2);
+function panel(p, r) {
+  const up = r.sunUp;
+  $("out").innerHTML = `
+<div class="tile"><span class="k">มุมเงยดวงอาทิตย์ (α)</span><span class="v">${sg(r.alpha)}<span class="u">°</span></span></div>
+<div class="tile"><span class="k">เวลาสุริยะ (ST)</span><span class="v">${hm(r.st)}<span class="u">น.</span></span></div>
+<div class="tile"><span class="k">ทิศของเงา</span><span class="v">${up ? f2(r.psiShadow) : "–"}<span class="u">${up ? "°" : ""}</span></span><span class="s">${up ? r.dirName : "ไม่มีเงา"}</span></div>
+<div class="tile tile-hot"><span class="k">ระยะเงา (d)</span><span class="v">${up ? f2(r.d) : "–"}<span class="u">${up ? "เมตร" : ""}</span></span></div>`;
+
+  const row = (k, sym, v) => `<div class="row"><dt>${k}</dt><dd>${sym ? `<span class="sym">${sym}</span>` : ""}${v}</dd></div>`;
+  const dash = (v) => (up ? v : "–");
+  $("ins-rows").innerHTML = `
+<dl><h3 class="gh">ดวงอาทิตย์</h3>
+${row("วันลำดับที่ในปี", "n", r.n)}${row("เวลาสุริยะ", "ST", hm(r.st) + " น.")}${row("เดคลิเนชัน", "δ", sg(r.delta) + "°")}
+${row("มุมชั่วโมง", "ω", sg(r.omega) + "°")}${row("มุมเงย", "α", sg(r.alpha) + "°")}${row("ทิศของดวงอาทิตย์", "ψ<sub>Sun</sub>", dash(f2(r.psiSun) + "°"))}</dl>
+<dl><h3 class="gh">เงาและร่ม</h3>
+${row("ทิศของเงา", "ψ<sub>Shadow</sub>", dash(f2(r.psiShadow) + "° (" + r.dirName + ")"))}${row("มุมจากแนวดิ่ง", "θ", f2(r.theta) + "°")}
+${row("ระยะเงา", "d", dash(f2(r.d) + " m"))}${row("พื้นที่ร่ม", "", f2(r.aUmbrella) + " m²")}${row("พื้นที่เงา", "", f2(r.aShadow) + " m²")}
+${row("พิกัดฉาก", "(x, y)", dash(`(${sg(r.xc)}, ${sg(r.yc)}) m`))}${row("พิกัดเชิงขั้ว", "(d, ψ)", dash(`(${f2(r.d)} m, ${f2(r.psiShadow, 1)}°)`))}</dl>`;
+  const sel = $("country"), city = sel.value >= 0 ? PLACES[sel.value][1] : "ตำแหน่งที่กำหนด";
+  const dt = new Date(Date.UTC(p.y, p.m - 1, p.d)).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "UTC" });
+  $("ins-sub").textContent = `ค่าทั้งหมดที่ใช้คำนวณ ณ ${dt} เวลา ${hm(last.t)} น. ที่${city}`;
 }
 
-// --- ลูกโลก (orthographic, หมุนให้ตำแหน่งผู้ใช้อยู่กึ่งกลาง) ---
+/* ---------- ลูกโลก (canvas; สีอ่านจากโทเคน CSS) ---------- */
 const gcv = $("gl"), gctx = gcv.getContext("2d");
-const wrap = (x) => ((((x + 180) % 360) + 360) % 360) - 180;
+const STARS = [[60,70,2],[140,40,1.6],[720,60,2.2],[760,150,1.5],[40,300,1.6],[90,700,2],[180,760,1.6],[700,740,2.2],[760,610,1.5],
+  [30,520,1.4],[620,30,1.4],[300,25,1.6],[770,380,1.8],[25,420,1.4],[560,775,1.5],[380,780,1.4],[110,160,1.4],[690,190,1.3]];
 let land = null;
 if (typeof fetch === "function" && typeof topojson !== "undefined") {
   fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json")
@@ -188,69 +448,105 @@ if (typeof fetch === "function" && typeof topojson !== "undefined") {
 
 function renderGlobe(p, r) {
   if (typeof d3 === "undefined") return;
-  const W = gcv.clientWidth, dpr = window.devicePixelRatio || 1;
+  const W = gcv.clientWidth; if (!W) return;
+  const dpr = window.devicePixelRatio || 1, g = gctx;
   gcv.width = gcv.height = Math.round(W * dpr);
-  gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const proj = d3.geoOrthographic().rotate([-p.lon, -p.lat]).scale(W / 2 - 8).translate([W / 2, W / 2]).clipAngle(90);
-  const path = d3.geoPath(proj, gctx);
-  const here = [p.lon, p.lat];
-  const sun = [wrap(p.lon - r.omega), r.delta]; // จุดใต้ดวงอาทิตย์
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const k = W / 800, C = W / 2, Rg = 330 * k;
+  const proj = d3.geoOrthographic().rotate([-p.lon, -p.lat]).scale(Rg).translate([C, C]).clipAngle(90);
+  const path = d3.geoPath(proj, g);
+  const here = [p.lon, p.lat], sun = [wrap(p.lon - r.omega), r.delta];
+  const dist = d3.geoDistance(here, sun), vis = dist < Math.PI / 2, sp = proj(sun);
+  const col = { sun: cssv("--sun"), paper: cssv("--paper"), a500: cssv("--a500"), edge: cssv("--land-edge") };
+  const circle = (x, y, rr) => { g.beginPath(); g.arc(x, y, rr, 0, 7); };
+  g.clearRect(0, 0, W, W);
 
-  const fill = (geo, f, s, lw = 1) => {
-    gctx.beginPath(); path(geo);
-    if (f) { gctx.fillStyle = f; gctx.fill(); }
-    if (s) { gctx.strokeStyle = s; gctx.lineWidth = lw; gctx.stroke(); }
-  };
-  gctx.clearRect(0, 0, W, W);
-  fill({ type: "Sphere" }, "#cfe6fb");
-  fill(d3.geoGraticule10(), null, "rgba(100,116,139,.35)", 0.6);
-  if (land) fill(land, "#a8d5a2", "#6b9a66", 0.5);
-  const night = d3.geoCircle().center([wrap(sun[0] + 180), -sun[1]]).radius(90)();
-  fill(night, "rgba(15,23,60,.5)", "rgba(15,23,60,.8)", 1);
+  g.globalAlpha = +cssv("--star-o") || 0; g.fillStyle = cssv("--ink");
+  STARS.forEach(([x, y, s]) => { circle(x * k, y * k, s * k); g.fill(); });
+  g.globalAlpha = 1;
 
-  // เส้นทางของจุดใต้ดวงอาทิตย์ตลอด 24 ชม. ของวันนั้น
+  let gr = g.createRadialGradient(C, C, 0, C, C, 376 * k);
+  gr.addColorStop(.87, "rgba(240,169,62,.42)"); gr.addColorStop(1, "rgba(240,169,62,0)");
+  g.fillStyle = gr; circle(C, C, 376 * k); g.fill();
+
+  // มหาสมุทร: แสงสว่างไล่ไปทางดวงอาทิตย์
+  let vx = sp[0] - C, vy = sp[1] - C; const vl = Math.hypot(vx, vy), cap = .8 * Rg;
+  if (vl > cap) { vx *= cap / vl; vy *= cap / vl; }
+  gr = g.createRadialGradient(C + vx, C + vy, 0, C + vx, C + vy, 620 * k);
+  gr.addColorStop(0, cssv("--ocean-hi")); gr.addColorStop(1, cssv("--ocean-lo"));
+  g.fillStyle = gr; circle(C, C, Rg); g.fill();
+
+  g.save(); circle(C, C, Rg); g.clip();
+  g.beginPath(); path(d3.geoGraticule10()); g.strokeStyle = cssv("--grat"); g.lineWidth = 1.2 * k; g.stroke();
+  if (land) { g.beginPath(); path(land); g.fillStyle = cssv("--land"); g.fill(); g.strokeStyle = col.edge; g.lineWidth = k; g.lineJoin = "round"; g.stroke(); }
+  g.filter = `blur(${14 * k}px)`; // ขอบกลางวัน/กลางคืนนุ่ม (Safari ไม่รองรับ จะเป็นขอบคม)
+  g.beginPath(); path(d3.geoCircle().center([wrap(sun[0] + 180), -sun[1]]).radius(90)());
+  g.fillStyle = cssv("--night"); g.fill(); g.filter = "none";
+  gr = g.createRadialGradient(C, C, 0, C, C, Rg);
+  gr.addColorStop(.7, "rgba(0,0,0,0)"); gr.addColorStop(1, cssv("--rim"));
+  g.fillStyle = gr; circle(C, C, Rg); g.fill();
+  if (vis) {
+    gr = g.createRadialGradient(sp[0], sp[1], 0, sp[0], sp[1], 170 * k);
+    gr.addColorStop(0, "rgba(240,169,62,.9)"); gr.addColorStop(.3, "rgba(240,169,62,.32)"); gr.addColorStop(1, "rgba(240,169,62,0)");
+    g.globalAlpha = .55; g.fillStyle = gr; circle(sp[0], sp[1], 170 * k); g.fill(); g.globalAlpha = 1;
+  }
+  g.restore();
+  g.globalAlpha = .6; g.strokeStyle = col.edge; g.lineWidth = 1.5 * k; circle(C, C, Rg); g.stroke(); g.globalAlpha = 1;
+
+  // เส้นทางของจุดใต้ดวงอาทิตย์ทั้งวัน (จุดไข่ปลา)
   const track = [];
-  for (let t = 0; t <= 24; t += 0.25) {
-    const q = calculateShadow(p.lat, p.lon, p.y, p.m, p.d, t, p.R, p.h, p.std);
-    track.push([wrap(p.lon - q.omega), q.delta]);
-  }
-  fill({ type: "LineString", coordinates: track }, null, "#f5b800", 2);
-  gctx.setLineDash([5, 4]);
-  fill({ type: "LineString", coordinates: [here, sun] }, null, "rgba(220,38,38,.8)", 1.2);
-  gctx.setLineDash([]);
-  fill({ type: "Sphere" }, null, "#334155", 1.5);
+  for (let t = 0; t <= 24; t += .25) { const q = calc(p, t); track.push([wrap(p.lon - q.omega), q.delta]); }
+  g.lineCap = "round"; g.strokeStyle = col.sun;
+  [[2, 9, .5], [4, 11, 1]].forEach(([w, gap, a]) => {
+    g.globalAlpha = a; g.lineWidth = w * k; g.setLineDash([.01, gap * k]);
+    g.beginPath(); path({ type: "LineString", coordinates: track }); g.stroke();
+  });
+  g.setLineDash([]); g.globalAlpha = 1;
 
-  const dist = d3.geoDistance(here, sun);
-  const sp = dist < Math.PI / 2 ? proj(sun) : null; // มองเห็นด้านหน้าลูกโลกเท่านั้น
-  if (sp) {
-    gctx.beginPath(); gctx.arc(sp[0], sp[1], 9, 0, 7);
-    gctx.fillStyle = "#fde047"; gctx.fill(); gctx.strokeStyle = "#f59e0b"; gctx.lineWidth = 2.5; gctx.stroke();
+  if (vis) {
+    gr = g.createRadialGradient(sp[0], sp[1], 0, sp[0], sp[1], 70 * k);
+    gr.addColorStop(0, "rgba(240,169,62,.9)"); gr.addColorStop(.3, "rgba(240,169,62,.32)"); gr.addColorStop(1, "rgba(240,169,62,0)");
+    g.fillStyle = gr; circle(sp[0], sp[1], 70 * k); g.fill();
+    g.strokeStyle = col.sun; g.lineWidth = 3.5 * k;
+    for (let a = 0; a < 8; a++) {
+      const t = a * Math.PI / 4, s = Math.sin(t), c = -Math.cos(t);
+      g.beginPath(); g.moveTo(sp[0] + 27 * k * s, sp[1] + 27 * k * c); g.lineTo(sp[0] + 38 * k * s, sp[1] + 38 * k * c); g.stroke();
+    }
+    circle(sp[0], sp[1], 17 * k); g.fillStyle = col.sun; g.fill(); g.strokeStyle = col.paper; g.lineWidth = 4 * k; g.stroke();
   }
-  gctx.beginPath(); gctx.arc(W / 2, W / 2, 5, 0, 7); gctx.fillStyle = "#dc2626"; gctx.fill();
-  gctx.strokeStyle = "#fff"; gctx.lineWidth = 1.5; gctx.stroke();
+  g.globalAlpha = .55; g.strokeStyle = col.a500; g.lineWidth = 3 * k; circle(C, C, 22 * k); g.stroke(); g.globalAlpha = 1;
+  circle(C, C, 11 * k); g.fillStyle = col.a500; g.fill(); g.strokeStyle = col.paper; g.lineWidth = 4.5 * k; g.stroke();
 
-  const fmt = (lat, lon) => `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(1)}°${lon >= 0 ? "E" : "W"}`;
-  $("gi").textContent = `☀ อยู่เหนือศีรษะที่ ${fmt(sun[1], sun[0])} · ห่างจากคุณ ${(dist * 180 / Math.PI).toFixed(1)}° (= 90° − α)` +
-    (sp ? "" : " · อยู่อีกฟากของโลก (ที่คุณเป็นกลางคืน)");
+  const fmt = (la, lo) => `${Math.abs(la).toFixed(2)}°${la >= 0 ? "N" : "S"}  ${Math.abs(lo).toFixed(2)}°${lo >= 0 ? "E" : "W"}`;
+  $("gi").innerHTML = `จุดใต้ดวงอาทิตย์<br><b>${fmt(sun[1], sun[0])}</b><br><span style="font-size:12.5px;font-weight:500">ห่างจากคุณ ${(dist * 180 / Math.PI).toFixed(1)}° (= 90° − α)${vis ? "" : " · อยู่อีกฟากของโลก"}</span>`;
 }
 
+/* ---------- วาด / เล่น ---------- */
 function draw(clockHours, fixed) {
+  $("err").hidden = true;
   const p = readInputs();
   if (!p) return false;
-  const r = calculateShadow(p.lat, p.lon, p.y, p.m, p.d, clockHours ?? p.clock, p.R, p.h, p.std);
-  panel(r); render(p, r, fixed); renderGlobe(p, r);
+  const t = clockHours ?? p.clock, r = calc(p, t);
+  last = { p, r, t };
+  const B = fixed ?? Math.max(6, r.sunUp ? Math.abs(r.xc) + p.R + 3 : 0, r.sunUp ? Math.abs(r.yc) + p.R + 3 : 0, p.R + 3);
+  panel(p, r);
+  $("cv").innerHTML = diagram(p, r, B);
+  $("cv2").innerHTML = diagram(p, r, B, true);
+  sunTrack(p); renderGlobe(p, r);
   return true;
 }
 const redraw = () => { if (!timer) draw(mode() === "anim" ? clock : undefined, mode() === "anim" ? bound : undefined); };
+const syncSlider = () => { $("tr").value = mins($("time").value); };
 
-function stop() { clearInterval(timer); timer = null; }
+const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg>';
+const ICON_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
 function setBtn() {
   const anim = mode() === "anim";
   $("time").disabled = $("tr").disabled = anim;
-  $("go").style.background = anim ? (timer ? "#b91c1c" : "#b45309") : "";
-  $("go").textContent = !anim ? "▶ คำนวณและแสดงผล" : timer ? "⏹ หยุด Animation" : finished ? "🎬 เล่นอีกครั้ง" : clock > 7 ? "▶ เล่นต่อ" : "🎬 เริ่มเล่น Animation";
-  $("restart").hidden = !(anim && !timer && clock > 7);
+  $("go").innerHTML = timer ? ICON_STOP + "หยุด" : ICON_PLAY + (finished ? "เล่นอีกครั้ง" : anim && clock > 7 ? "เล่นต่อ" : "เล่น");
 }
+function stop() { clearInterval(timer); timer = null; }
+function setMode(v) { document.querySelector(`input[name=mode][value=${v}]`).checked = true; }
 
 function play(restart) {
   const p = readInputs();
@@ -265,35 +561,34 @@ function play(restart) {
   };
   stop(); timer = setInterval(step, 25); step(); setBtn();
 }
-
 $("go").onclick = () => {
-  if (mode() === "static") { stop(); draw(); }
-  else if (timer) { stop(); setBtn(); }
-  else play(false);
+  if (timer) { stop(); setBtn(); return; }
+  setMode("anim"); play(false);
 };
-$("restart").onclick = () => play(true);
-document.querySelectorAll("input[name=mode]").forEach((e) => (e.onchange = () => { stop(); clock = 7; finished = false; setBtn(); if (mode() === "static") draw(); }));
-// --- ตัวช่วยใช้งาน: ประเทศ, เลื่อนเวลา, ตำแหน่งของฉัน, ตอนนี้, วันสำคัญ, ลิงก์แชร์ ---
-const PLACES = [ // [ชื่อ, lat, lon, UTC+]
-  ["ไทย — กรุงเทพฯ", 13.75, 100.50, 7], ["ญี่ปุ่น — โตเกียว", 35.68, 139.69, 9],
-  ["จีน — ปักกิ่ง", 39.90, 116.41, 8], ["เกาหลีใต้ — โซล", 37.57, 126.98, 9],
-  ["ไต้หวัน — ไทเป", 25.03, 121.57, 8], ["มองโกเลีย — อูลานบาตอร์", 47.89, 106.91, 8],
-  ["เวียดนาม — ฮานอย", 21.03, 105.85, 7], ["ลาว — เวียงจันทน์", 17.97, 102.63, 7],
-  ["กัมพูชา — พนมเปญ", 11.56, 104.92, 7], ["เมียนมา — เนปิดอว์", 19.76, 96.08, 6.5],
-  ["มาเลเซีย — กัวลาลัมเปอร์", 3.14, 101.69, 8], ["สิงคโปร์ — สิงคโปร์", 1.35, 103.82, 8],
-  ["อินโดนีเซีย — จาการ์ตา", -6.21, 106.85, 7], ["ฟิลิปปินส์ — มะนิลา", 14.60, 120.98, 8],
-  ["อินเดีย — นิวเดลี", 28.61, 77.21, 5.5], ["เนปาล — กาฐมาณฑุ", 27.72, 85.32, 5.75],
-  ["บังกลาเทศ — ธากา", 23.81, 90.41, 6], ["ปากีสถาน — อิสลามาบัด", 33.68, 73.05, 5],
-  ["อิหร่าน — เตหะราน", 35.69, 51.39, 3.5], ["ซาอุดีอาระเบีย — ริยาด", 24.71, 46.68, 3],
-  ["สหรัฐอาหรับเอมิเรตส์ — อาบูดาบี", 24.45, 54.38, 4],
-];
-$("country").innerHTML = '<option value="-1">กำหนดเอง</option>' + PLACES.map((p, i) => `<option value="${i}">${p[0]}</option>`).join("");
-$("country").value = "0";
+$("restart").onclick = () => { setMode("anim"); play(true); };
+document.querySelectorAll("input[name=mode]").forEach((e) => (e.onchange = () => {
+  stop(); clock = 7; finished = false; bound = null;
+  if (mode() === "anim") { $("time").value = "07:00"; syncSlider(); }
+  setBtn(); draw(mode() === "anim" ? 7 : undefined);
+}));
 
-const mins = (t) => { const [a, b] = t.split(":").map(Number); return a * 60 + b; };
-function syncSlider() { $("tr").value = mins($("time").value); }
+/* ---------- ประเทศ / ตำแหน่ง / เวลา ---------- */
+const PLACES = [ // [ประเทศ, เมืองหลวง, lat, lon, UTC+]
+  ["ไทย", "กรุงเทพมหานคร", 13.75, 100.50, 7], ["ญี่ปุ่น", "โตเกียว", 35.68, 139.69, 9],
+  ["จีน", "ปักกิ่ง", 39.90, 116.41, 8], ["เกาหลีใต้", "โซล", 37.57, 126.98, 9],
+  ["ไต้หวัน", "ไทเป", 25.03, 121.57, 8], ["มองโกเลีย", "อูลานบาตอร์", 47.89, 106.91, 8],
+  ["เวียดนาม", "ฮานอย", 21.03, 105.85, 7], ["ลาว", "เวียงจันทน์", 17.97, 102.63, 7],
+  ["กัมพูชา", "พนมเปญ", 11.56, 104.92, 7], ["เมียนมา", "เนปิดอว์", 19.76, 96.08, 6.5],
+  ["มาเลเซีย", "กัวลาลัมเปอร์", 3.14, 101.69, 8], ["สิงคโปร์", "สิงคโปร์", 1.35, 103.82, 8],
+  ["อินโดนีเซีย", "จาการ์ตา", -6.21, 106.85, 7], ["ฟิลิปปินส์", "มะนิลา", 14.60, 120.98, 8],
+  ["อินเดีย", "นิวเดลี", 28.61, 77.21, 5.5], ["เนปาล", "กาฐมาณฑุ", 27.72, 85.32, 5.75],
+  ["บังกลาเทศ", "ธากา", 23.81, 90.41, 6], ["ปากีสถาน", "อิสลามาบัด", 33.68, 73.05, 5],
+  ["อิหร่าน", "เตหะราน", 35.69, 51.39, 3.5], ["ซาอุดีอาระเบีย", "ริยาด", 24.71, 46.68, 3],
+  ["สหรัฐอาหรับเอมิเรตส์", "อาบูดาบี", 24.45, 54.38, 4],
+];
+$("country").innerHTML = PLACES.map((p, i) => `<option value="${i}">${p[0]} (${p[1]})</option>`).join("") + '<option value="-1">กำหนดเอง</option>';
+$("country").value = "0";
 const setCustom = () => ($("country").value = "-1");
-const pad = (n) => String(n).padStart(2, "0");
 
 function afterChange() { // ค่าเปลี่ยนจากปุ่ม/รายการ: หยุดแล้ววาดใหม่
   stop(); finished = false; if (mode() === "anim") clock = 7; bound = null; setBtn();
@@ -301,31 +596,29 @@ function afterChange() { // ค่าเปลี่ยนจากปุ่ม/
 }
 $("country").onchange = () => {
   const p = PLACES[$("country").value];
-  if (p) { $("lat").value = p[1]; $("lon").value = p[2]; $("tz").value = p[3]; }
+  if (p) { $("lat").value = p[2]; $("lon").value = p[3]; $("tz").value = p[4]; }
   afterChange();
 };
-$("lat").addEventListener("input", setCustom); $("lon").addEventListener("input", setCustom);
-$("tz").addEventListener("input", setCustom);
+["lat", "lon", "tz"].forEach((id) => $(id).addEventListener("input", setCustom));
 $("tr").addEventListener("input", () => { $("time").value = pad(Math.floor($("tr").value / 60)) + ":" + pad($("tr").value % 60); });
 
 $("here").onclick = () => {
-  if (!navigator.geolocation) { $("err").textContent = "เบราว์เซอร์นี้ไม่รองรับการหาตำแหน่ง"; return; }
-  $("err").textContent = "กำลังหาตำแหน่ง...";
+  const e = $("err");
+  const fail = (m) => { e.textContent = m; e.hidden = false; };
+  if (!navigator.geolocation) return fail("เบราว์เซอร์นี้ไม่รองรับการหาตำแหน่ง");
   navigator.geolocation.getCurrentPosition((pos) => {
     $("lat").value = pos.coords.latitude.toFixed(2); $("lon").value = pos.coords.longitude.toFixed(2);
     $("tz").value = Math.round((-new Date().getTimezoneOffset() / 60) * 4) / 4;
-    setCustom(); $("err").textContent = ""; afterChange();
-  }, () => { $("err").textContent = "หาตำแหน่งไม่ได้ (ไม่ได้อนุญาตหรือไม่มีสัญญาณ) เลือกประเทศหรือกรอกเองได้"; });
+    setCustom(); afterChange();
+  }, () => fail("หาตำแหน่งไม่ได้ (ไม่ได้อนุญาตหรือไม่มีสัญญาณ) เลือกประเทศหรือกรอกเองได้"));
 };
 
 $("now").onclick = () => { // เวลาปัจจุบัน ณ เขตเวลาที่เลือก
   const t = new Date(Date.now() + +$("tz").value * 36e5);
   $("date").value = `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
   $("time").value = `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`;
-  document.querySelector('input[name=mode][value=static]').checked = true;
-  syncSlider(); afterChange();
+  setMode("static"); syncSlider(); afterChange();
 };
-
 document.querySelectorAll("#chips [data-md]").forEach((b) => (b.onclick = () => {
   const [m, d] = b.dataset.md.split("-");
   $("date").value = `${$("date").value.slice(0, 4)}-${pad(m)}-${pad(d)}`;
@@ -337,22 +630,38 @@ $("link").onclick = async () => {
   const q = new URLSearchParams(KEYS.map((k) => [k, $(k).value]));
   q.set("c", $("country").value);
   location.hash = q.toString();
-  try { await navigator.clipboard.writeText(location.href); $("link").textContent = "✅ คัดลอกแล้ว"; }
-  catch { $("link").textContent = "🔗 คัดลอกจากแถบที่อยู่"; }
-  setTimeout(() => ($("link").textContent = "🔗 คัดลอกลิงก์"), 2000);
+  const btn = $("link"), old = btn.innerHTML;
+  try { await navigator.clipboard.writeText(location.href); btn.innerHTML = "✅ คัดลอกแล้ว"; }
+  catch { btn.innerHTML = "คัดลอกจากแถบที่อยู่"; }
+  setTimeout(() => (btn.innerHTML = old), 2000);
 };
 (function loadHash() {
   const q = new URLSearchParams(location.hash.slice(1));
   KEYS.forEach((k) => q.has(k) && ($(k).value = q.get(k)));
-  if (q.has("c") && PLACES[q.get("c")]) $("country").value = q.get("c");
+  if (q.has("c") && $("country").querySelector(`option[value="${q.get("c")}"]`)) $("country").value = q.get("c");
+  if (!q.has("date")) { // ค่าเริ่มต้น: วันนี้ ณ เขตเวลาที่เลือก
+    const t = new Date(Date.now() + +$("tz").value * 36e5);
+    $("date").value = `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
+  }
 })();
 
+/* ---------- drawer ข้อมูลเชิงลึก ---------- */
+let opener = null;
+function openDrawer() { opener = document.activeElement; $("drawer").hidden = false; document.body.style.overflow = "hidden"; $("close-ins").focus(); }
+function closeDrawer() { $("drawer").hidden = true; document.body.style.overflow = ""; opener && opener.focus(); }
+$("open-insight").onclick = openDrawer;
+$("close-ins").onclick = closeDrawer;
+document.querySelector("#drawer .back").onclick = closeDrawer;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+
 $("f").addEventListener("input", (e) => {
+  if (e.target.name === "theme" || e.target.name === "mode") return;
   if (e.target.id !== "tr") syncSlider();
   if (!timer && mode() === "static") draw();
 });
 window.addEventListener("resize", redraw);
-syncSlider(); draw(); setBtn();
+if ("ResizeObserver" in window) new ResizeObserver(redraw).observe(gcv.parentElement);
+applyTheme(themePref); syncSlider(); setBtn(); draw();
 </script>
 </body>
 </html>
