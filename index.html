@@ -18,7 +18,7 @@
   canvas { width:100%; aspect-ratio:1; display:block; border-radius:8px; background:#fff; }
   form { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:12px; }
   label { display:grid; gap:2px; font-size:13px; color:var(--mute); }
-  input { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); }
+  input { min-width:0; font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); }
   input:disabled { opacity:.5; }
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
   button { font:inherit; font-weight:600; padding:8px 14px; border:0; border-radius:6px; color:#fff; background:var(--acc); cursor:pointer; }
@@ -59,9 +59,21 @@
     <dl id="out"></dl>
   </aside>
 
+  <section class="card" style="grid-column:1/-1">
+    <h2 style="font-size:16px;margin:0 0 8px">ลูกโลก: ดวงอาทิตย์อยู่ตรงไหนของโลก</h2>
+    <canvas id="gl" style="max-width:520px;margin:0 auto"></canvas>
+    <p id="gi" style="text-align:center;margin:8px 0 0"></p>
+    <p style="text-align:center;color:var(--mute);font-size:12px;margin:4px 0 0">
+      ☀ = จุดที่ดวงอาทิตย์อยู่เหนือศีรษะพอดี · ● แดง = ตำแหน่งของคุณ (กึ่งกลางภาพ) · ส่วนมืด = กลางคืน · เส้นเหลือง = เส้นทางของ ☀ ตลอด 24 ชม. ของวันนั้น
+    </p>
+  </section>
+
   <footer>ใช้สูตรดาราศาสตร์มาตรฐาน (เดคลิเนชัน, มุมชั่วโมง, สมการเวลา) อ้างอิงเส้นเมริเดียน 105°E · ค่าประมาณ ไม่รวมการหักเหของบรรยากาศ</footer>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="calc.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -144,13 +156,73 @@ function panel(r) {
   $("out").innerHTML = rows.map((x) => x === "-" ? '<hr style="grid-column:1/-1;width:100%">' : `<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join("");
 }
 
+// --- ลูกโลก (orthographic, หมุนให้ตำแหน่งผู้ใช้อยู่กึ่งกลาง) ---
+const gcv = $("gl"), gctx = gcv.getContext("2d");
+const wrap = (x) => ((((x + 180) % 360) + 360) % 360) - 180;
+let land = null;
+if (typeof fetch === "function" && typeof topojson !== "undefined") {
+  fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json")
+    .then((r) => r.json())
+    .then((w) => { land = topojson.feature(w, w.objects.land); redraw(); })
+    .catch(() => {}); // ไม่มีแผนที่ก็ยังแสดงลูกโลกเปล่าได้
+}
+
+function renderGlobe(p, r) {
+  if (typeof d3 === "undefined") return;
+  const W = gcv.clientWidth, dpr = window.devicePixelRatio || 1;
+  gcv.width = gcv.height = Math.round(W * dpr);
+  gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const proj = d3.geoOrthographic().rotate([-p.lon, -p.lat]).scale(W / 2 - 8).translate([W / 2, W / 2]).clipAngle(90);
+  const path = d3.geoPath(proj, gctx);
+  const here = [p.lon, p.lat];
+  const sun = [wrap(p.lon - r.omega), r.delta]; // จุดใต้ดวงอาทิตย์
+
+  const fill = (geo, f, s, lw = 1) => {
+    gctx.beginPath(); path(geo);
+    if (f) { gctx.fillStyle = f; gctx.fill(); }
+    if (s) { gctx.strokeStyle = s; gctx.lineWidth = lw; gctx.stroke(); }
+  };
+  gctx.clearRect(0, 0, W, W);
+  fill({ type: "Sphere" }, "#cfe6fb");
+  fill(d3.geoGraticule10(), null, "rgba(100,116,139,.35)", 0.6);
+  if (land) fill(land, "#a8d5a2", "#6b9a66", 0.5);
+  const night = d3.geoCircle().center([wrap(sun[0] + 180), -sun[1]]).radius(90)();
+  fill(night, "rgba(15,23,60,.5)", "rgba(15,23,60,.8)", 1);
+
+  // เส้นทางของจุดใต้ดวงอาทิตย์ตลอด 24 ชม. ของวันนั้น
+  const track = [];
+  for (let t = 0; t <= 24; t += 0.25) {
+    const q = calculateShadow(p.lat, p.lon, p.y, p.m, p.d, t, p.R, p.h);
+    track.push([wrap(p.lon - q.omega), q.delta]);
+  }
+  fill({ type: "LineString", coordinates: track }, null, "#f5b800", 2);
+  gctx.setLineDash([5, 4]);
+  fill({ type: "LineString", coordinates: [here, sun] }, null, "rgba(220,38,38,.8)", 1.2);
+  gctx.setLineDash([]);
+  fill({ type: "Sphere" }, null, "#334155", 1.5);
+
+  const dist = d3.geoDistance(here, sun);
+  const sp = dist < Math.PI / 2 ? proj(sun) : null; // มองเห็นด้านหน้าลูกโลกเท่านั้น
+  if (sp) {
+    gctx.beginPath(); gctx.arc(sp[0], sp[1], 9, 0, 7);
+    gctx.fillStyle = "#fde047"; gctx.fill(); gctx.strokeStyle = "#f59e0b"; gctx.lineWidth = 2.5; gctx.stroke();
+  }
+  gctx.beginPath(); gctx.arc(W / 2, W / 2, 5, 0, 7); gctx.fillStyle = "#dc2626"; gctx.fill();
+  gctx.strokeStyle = "#fff"; gctx.lineWidth = 1.5; gctx.stroke();
+
+  const fmt = (lat, lon) => `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(1)}°${lon >= 0 ? "E" : "W"}`;
+  $("gi").textContent = `☀ อยู่เหนือศีรษะที่ ${fmt(sun[1], sun[0])} · ห่างจากคุณ ${(dist * 180 / Math.PI).toFixed(1)}° (= 90° − α)` +
+    (sp ? "" : " · อยู่อีกฟากของโลก (ที่คุณเป็นกลางคืน)");
+}
+
 function draw(clockHours, fixed) {
   const p = readInputs();
   if (!p) return false;
   const r = calculateShadow(p.lat, p.lon, p.y, p.m, p.d, clockHours ?? p.clock, p.R, p.h);
-  panel(r); render(p, r, fixed);
+  panel(r); render(p, r, fixed); renderGlobe(p, r);
   return true;
 }
+const redraw = () => { if (!timer) draw(mode() === "anim" ? clock : undefined, mode() === "anim" ? bound : undefined); };
 
 function stop() { clearInterval(timer); timer = null; }
 function setBtn() {
@@ -183,7 +255,7 @@ $("go").onclick = () => {
 $("restart").onclick = () => play(true);
 document.querySelectorAll("input[name=mode]").forEach((e) => (e.onchange = () => { stop(); clock = 7; finished = false; setBtn(); if (mode() === "static") draw(); }));
 $("f").addEventListener("input", () => { if (!timer && mode() === "static") draw(); });
-window.addEventListener("resize", () => { if (!timer) draw(mode() === "anim" ? clock : undefined, mode() === "anim" ? bound : undefined); });
+window.addEventListener("resize", redraw);
 draw(); setBtn();
 </script>
 </body>
